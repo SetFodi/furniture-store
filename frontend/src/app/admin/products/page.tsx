@@ -5,7 +5,17 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Product } from '@/types'; // Import Product type
+import { Product } from '@/types';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Trash2, Edit, Loader2, PlusCircle } from 'lucide-react'; // Added PlusCircle icon
 
 // Extend session type
 import { Session } from "next-auth";
@@ -22,134 +32,110 @@ const AdminProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null); // Track deleting state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // Fetch all products (using public endpoint for display)
+  // Fetch logic (remains the same)
   useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      setError(null);
+    const fetchProducts = async () => { /* ... */
+      setIsLoading(true); setError(null);
       if (!apiUrl) { setError("API URL missing"); setIsLoading(false); return; }
-
       try {
-        // Use the public endpoint to get the list
         const res = await fetch(`${apiUrl}/products`, { cache: 'no-store' });
         const data = await res.json();
         if (!res.ok || !data.success) { throw new Error(data.message || 'Failed to fetch products'); }
         setProducts(data.data as Product[]);
-      } catch (err: any) {
-        setError(err.message); console.error("Fetch products error:", err);
-      } finally {
-        setIsLoading(false);
-      }
+      } catch (err: any) { setError(err.message); console.error("Fetch products error:", err); }
+      finally { setIsLoading(false); }
     };
     fetchProducts();
-  }, [apiUrl]); // Re-fetch if apiUrl changes (it shouldn't)
+  }, [apiUrl]);
 
-
-  // --- Delete Handler ---
-  const handleDeleteProduct = async (productId: string) => {
-     if (!session?.accessToken || session?.user?.role !== 'admin') {
-        alert("Unauthorized"); return;
-     }
-     if (!confirm(`Are you sure you want to delete product ${productId}?`)) {
-        return;
-     }
-
-     setDeletingId(productId); // Show loading state for this product
-     setError(null);
-
+  // Delete Handler (remains the same)
+  const handleDeleteProduct = async (productId: string) => { /* ... */
+     if (!session?.accessToken || session?.user?.role !== 'admin') { alert("Unauthorized"); return; }
+     if (!confirm(`Delete product ${productId}?`)) { return; }
+     setDeletingId(productId); setError(null);
      try {
-        const res = await fetch(`${apiUrl}/admin/products/${productId}`, {
-           method: 'DELETE',
-           headers: { Authorization: `Bearer ${session.accessToken}` },
-        });
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-           throw new Error(data.message || 'Failed to delete product');
-        }
-
-        // Remove deleted product from local state
-        setProducts(prevProducts => prevProducts.filter(p => p._id !== productId));
-        alert(data.message || "Product deleted successfully!");
-
-     } catch (err: any) {
-        setError(err.message);
-        alert(`Error deleting product: ${err.message}`);
-        console.error("Delete product error:", err);
-     } finally {
-        setDeletingId(null); // Reset loading state
-     }
+       const res = await fetch(`${apiUrl}/admin/products/${productId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${session.accessToken}` } });
+       const data = await res.json();
+       if (!res.ok || !data.success) { throw new Error(data.message || 'Failed to delete product'); }
+       setProducts(prev => prev.filter(p => p._id !== productId));
+       alert(data.message || "Product deleted!");
+     } catch (err: any) { setError(err.message); alert(`Error: ${err.message}`); console.error("Delete product error:", err); }
+     finally { setDeletingId(null); }
   };
-  // --- End Delete Handler ---
-
 
   if (isLoading) return <div className="text-center p-4">Loading products...</div>;
-  // Show error but still allow viewing table if some products loaded before error
-  // if (error && products.length === 0) return <div className="text-center p-4 text-red-600">Error: {error}</div>;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
          <h1 className="text-2xl font-semibold">Manage Products</h1>
-         {/* Add "Create Product" button later */}
-         <Link href="/admin/products/create" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 text-sm">
-            + Create Product
+         {/* --- Corrected Create Product Button --- */}
+         <Link href="/admin/products/create" legacyBehavior={false}>
+            <Button size="sm"> {/* Removed asChild */}
+               <PlusCircle className="mr-2 h-4 w-4" /> Create Product
+            </Button>
          </Link>
+         {/* --- End Correction --- */}
       </div>
 
-      {error && <div className="text-center p-4 mb-4 text-red-600 bg-red-100 border border-red-300 rounded">Error: {error}</div>}
+      {error && <div className="p-3 mb-4 bg-red-100 text-red-700 border border-red-300 rounded">Error: {error}</div>}
 
-       <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-         <table className="min-w-full divide-y divide-gray-200">
-           <thead className="bg-gray-50">
-             <tr>
-               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-               <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-               <th scope="col" className="relative px-4 py-3"><span className="sr-only">Actions</span></th>
-             </tr>
-           </thead>
-           <tbody className="bg-white divide-y divide-gray-200">
-             {products.map((product) => (
-               <tr key={product._id}>
-                 <td className="px-4 py-2 whitespace-nowrap">
-                    <div className="relative h-10 w-10 flex-shrink-0">
-                       <Image
-                          src={product.imageUrl}
-                          alt={product.name}
-                          fill
-                          style={{ objectFit: 'cover' }}
-                          className="rounded"
-                          sizes="40px"
-                       />
-                    </div>
-                 </td>
-                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${product.price.toFixed(2)}</td>
-                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{product.category}</td>
-                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{product.stock}</td>
-                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                   {/* Add Edit Link Later */}
-                   <Link href={`/admin/products/edit/${product._id}`} className="text-indigo-600 hover:text-indigo-900">
-                     Edit
-                   </Link>
-                   <button
-                     onClick={() => handleDeleteProduct(product._id)}
-                     disabled={deletingId === product._id}
-                     className={`text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed`}
-                   >
-                     {deletingId === product._id ? 'Deleting...' : 'Delete'}
-                   </button>
-                 </td>
-               </tr>
-             ))}
-           </tbody>
-         </table>
+       <div className="border rounded-lg">
+         <Table>
+           <TableHeader>
+             <TableRow>
+               <TableHead className="w-[80px]">Image</TableHead>
+               <TableHead>Name</TableHead>
+               <TableHead className="w-[100px]">Price</TableHead>
+               <TableHead>Category</TableHead>
+               <TableHead className="w-[80px]">Stock</TableHead>
+               <TableHead className="text-right w-[120px]">Actions</TableHead>
+             </TableRow>
+           </TableHeader>
+           <TableBody>
+             {products.length === 0 ? (
+                <TableRow>
+                   <TableCell colSpan={6} className="h-24 text-center"> No products found. </TableCell>
+                </TableRow>
+             ) : (
+                products.map((product) => (
+                  <TableRow key={product._id}>
+                    <TableCell>
+                       <div className="relative h-12 w-12 flex-shrink-0">
+                          <Image src={product.imageUrl} alt={product.name} fill style={{ objectFit: 'cover' }} className="rounded" sizes="50px" />
+                       </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>${product.price.toFixed(2)}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.stock}</TableCell>
+                    <TableCell className="text-right space-x-1">
+                      {/* Edit Button/Link (already corrected) */}
+                      <Link href={`/admin/products/edit/${product._id}`} legacyBehavior={false} title="Edit Product">
+                         <Button variant="ghost" size="icon">
+                            <Edit className="h-4 w-4" />
+                         </Button>
+                      </Link>
+                      {/* Delete Button (already corrected) */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteProduct(product._id)}
+                        disabled={deletingId === product._id}
+                        className="text-destructive hover:text-destructive/80"
+                        title="Delete Product"
+                      >
+                         {deletingId === product._id ? ( <Loader2 className="h-4 w-4 animate-spin" /> ) : ( <Trash2 className="h-4 w-4" /> )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+             )}
+           </TableBody>
+         </Table>
        </div>
     </div>
   );

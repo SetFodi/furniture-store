@@ -4,14 +4,15 @@
 import React, { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import LoadingSpinner from "@/components/ui/loading-spinner"; // <<< Import the spinner
 
-// Extend session type to include role if you added it in NextAuth callbacks
+// Extend session type
 import { Session } from "next-auth";
 interface CustomSession extends Session {
   accessToken?: string;
   user?: Session["user"] & {
     _id?: string;
-    role?: string; // <<< Add role if available in session user object
+    role?: string;
   };
 }
 
@@ -24,37 +25,26 @@ const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // If session is still loading, do nothing yet
-    if (status === "loading") {
-      return;
-    }
-
-    // If not authenticated, redirect to login
-    if (status === "unauthenticated") {
-      router.replace("/login?callbackUrl=/admin/dashboard"); // Redirect to login, ask to come back
-      return;
-    }
-
-    // If authenticated, check for admin role
-    // IMPORTANT: Ensure 'role' is added to the session object via NextAuth callbacks
+    if (status === "loading") { return; }
+    if (status === "unauthenticated") { router.replace("/login?callbackUrl=/admin/dashboard"); return; }
     if (status === "authenticated") {
-      // Check if user object and role exist and if role is 'admin'
       if (!session?.user?.role || session.user.role !== 'admin') {
          console.warn("Access Denied: User is not an admin.", session?.user);
-         // Redirect non-admins away (e.g., to home page or a specific 'unauthorized' page)
-         router.replace("/");
-         return;
+         router.replace("/"); return;
       }
-      // If user is admin, allow rendering children (do nothing in useEffect)
       console.log("Admin access granted for:", session.user.email);
     }
-
   }, [session, status, router]);
 
   // Render loading state or null while checking/redirecting
   if (status === "loading" || (status === "authenticated" && session?.user?.role !== 'admin') || status === "unauthenticated") {
-    // You can show a more sophisticated loading spinner here
-    return <div className="flex justify-center items-center min-h-screen">Loading Admin Access...</div>;
+    // --- Use the spinner ---
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+         <LoadingSpinner size={48} /> {/* <<< Use the spinner component */}
+      </div>
+    );
+    // --- End spinner usage ---
   }
 
   // If authenticated and user is admin, render the children components

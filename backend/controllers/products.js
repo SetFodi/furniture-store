@@ -2,13 +2,64 @@
 const Product = require("../models/Product");
 const asyncHandler = require("../utils/asyncHandler");
 
-// @desc    Fetch all products
+// @desc    Fetch all products (with filtering and sorting)
 // @route   GET /api/products
 // @access  Public
 exports.getProducts = asyncHandler(async (req, res, next) => {
-  // Add pagination/filtering later if needed
-  const products = await Product.find({});
-  res.status(200).json({ success: true, count: products.length, data: products });
+  const queryFilter = {}; // For category, price etc.
+  let sortOptions = { createdAt: -1 }; // Default sort: newest first
+
+  // --- Category Filtering ---
+  if (req.query.category) {
+    queryFilter.category = { $regex: new RegExp(`^${req.query.category}$`, 'i') };
+  }
+
+  // --- Price Filtering (Example - Add more robust parsing/validation later) ---
+  const minPrice = parseFloat(req.query.minPrice);
+  const maxPrice = parseFloat(req.query.maxPrice);
+
+  if (!isNaN(minPrice) || !isNaN(maxPrice)) {
+     queryFilter.price = {};
+     if (!isNaN(minPrice)) {
+        queryFilter.price.$gte = minPrice; // Greater than or equal to minPrice
+     }
+     if (!isNaN(maxPrice)) {
+        queryFilter.price.$lte = maxPrice; // Less than or equal to maxPrice
+     }
+  }
+  // --- End Price Filtering ---
+
+
+  // --- Sorting Logic ---
+  const sortBy = req.query.sort;
+  switch (sortBy) {
+    case 'price_asc':
+      sortOptions = { price: 1 }; // 1 for ascending
+      break;
+    case 'price_desc':
+      sortOptions = { price: -1 }; // -1 for descending
+      break;
+    case 'name_asc': // Optional: Sort by name A-Z
+      sortOptions = { name: 1 };
+      break;
+    case 'newest':
+    default:
+      sortOptions = { createdAt: -1 }; // Default
+      break;
+  }
+  // --- End Sorting Logic ---
+
+  console.log("API Filter:", queryFilter); // Log filter
+  console.log("API Sort:", sortOptions); // Log sort
+
+  // Apply filter and sort options
+  const products = await Product.find(queryFilter).sort(sortOptions);
+
+  res.status(200).json({
+    success: true,
+    count: products.length,
+    data: products,
+  });
 });
 
 // @desc    Fetch single product by ID
@@ -28,17 +79,9 @@ exports.getProductById = asyncHandler(async (req, res, next) => {
 // @route   POST /api/admin/products
 // @access  Private/Admin
 exports.createProduct = asyncHandler(async (req, res, next) => {
-  // Basic product creation, assumes necessary fields are in req.body
-  // Add validation as needed
   const productData = { ...req.body };
-  // Optionally set createdBy user: productData.user = req.user._id;
-
   const product = await Product.create(productData);
-
-  res.status(201).json({
-    success: true,
-    data: product,
-  });
+  res.status(201).json({ success: true, data: product });
 });
 
 // @desc    Update a product
@@ -47,23 +90,9 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 exports.updateProduct = asyncHandler(async (req, res, next) => {
   const productId = req.params.id;
   let product = await Product.findById(productId);
-
-  if (!product) {
-    res.status(404);
-    throw new Error(`Product not found with id of ${productId}`);
-  }
-
-  // Update product fields from req.body
-  // Add validation as needed
-  product = await Product.findByIdAndUpdate(productId, req.body, {
-    new: true, // Return the modified document
-    runValidators: true, // Run schema validators on update
-  });
-
-  res.status(200).json({
-    success: true,
-    data: product,
-  });
+  if (!product) { res.status(404); throw new Error(`Product not found with id of ${productId}`); }
+  product = await Product.findByIdAndUpdate(productId, req.body, { new: true, runValidators: true });
+  res.status(200).json({ success: true, data: product });
 });
 
 // @desc    Delete a product
@@ -72,20 +101,7 @@ exports.updateProduct = asyncHandler(async (req, res, next) => {
 exports.deleteProduct = asyncHandler(async (req, res, next) => {
   const productId = req.params.id;
   const product = await Product.findById(productId);
-
-  if (!product) {
-    res.status(404);
-    throw new Error(`Product not found with id of ${productId}`);
-  }
-
-  // Use deleteOne() or findByIdAndDelete()
+  if (!product) { res.status(404); throw new Error(`Product not found with id of ${productId}`); }
   await Product.deleteOne({ _id: productId });
-  // Or: await product.remove(); // Mongoose < v7
-  // Or: await Product.findByIdAndDelete(productId);
-
-  res.status(200).json({
-    success: true,
-    data: {}, // Send empty object on successful deletion
-    message: `Product ${productId} deleted successfully`,
-  });
+  res.status(200).json({ success: true, data: {}, message: `Product ${productId} deleted successfully` });
 });
