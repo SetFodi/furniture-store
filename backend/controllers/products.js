@@ -2,62 +2,68 @@
 const Product = require("../models/Product");
 const asyncHandler = require("../utils/asyncHandler");
 
-// @desc    Fetch all products (with filtering and sorting)
+// @desc    Fetch all products (with filtering, sorting, and limit)
 // @route   GET /api/products
 // @access  Public
 exports.getProducts = asyncHandler(async (req, res, next) => {
-  const queryFilter = {}; // For category, price etc.
-  let sortOptions = { createdAt: -1 }; // Default sort: newest first
+  const queryFilter = {};
+  let sortOptions = { createdAt: -1 }; // Default: newest first
 
-  // --- Category Filtering ---
+  // Category Filtering
   if (req.query.category) {
     queryFilter.category = { $regex: new RegExp(`^${req.query.category}$`, 'i') };
   }
 
-  // --- Price Filtering (Example - Add more robust parsing/validation later) ---
+  // Price Filtering
   const minPrice = parseFloat(req.query.minPrice);
   const maxPrice = parseFloat(req.query.maxPrice);
-
   if (!isNaN(minPrice) || !isNaN(maxPrice)) {
      queryFilter.price = {};
-     if (!isNaN(minPrice)) {
-        queryFilter.price.$gte = minPrice; // Greater than or equal to minPrice
-     }
-     if (!isNaN(maxPrice)) {
-        queryFilter.price.$lte = maxPrice; // Less than or equal to maxPrice
-     }
+     if (!isNaN(minPrice)) { queryFilter.price.$gte = minPrice; }
+     if (!isNaN(maxPrice)) { queryFilter.price.$lte = maxPrice; }
   }
-  // --- End Price Filtering ---
 
-
-  // --- Sorting Logic ---
+  // Sorting Logic
   const sortBy = req.query.sort;
   switch (sortBy) {
-    case 'price_asc':
-      sortOptions = { price: 1 }; // 1 for ascending
-      break;
-    case 'price_desc':
-      sortOptions = { price: -1 }; // -1 for descending
-      break;
-    case 'name_asc': // Optional: Sort by name A-Z
-      sortOptions = { name: 1 };
-      break;
-    case 'newest':
-    default:
-      sortOptions = { createdAt: -1 }; // Default
-      break;
+    case 'price_asc': sortOptions = { price: 1 }; break;
+    case 'price_desc': sortOptions = { price: -1 }; break;
+    case 'name_asc': sortOptions = { name: 1 }; break;
+    case 'newest': default: sortOptions = { createdAt: -1 }; break;
   }
-  // --- End Sorting Logic ---
 
-  console.log("API Filter:", queryFilter); // Log filter
-  console.log("API Sort:", sortOptions); // Log sort
+  // --- Limit Logic ---
+  let limit = 0; // Default: no limit
+  if (req.query.limit) {
+     const parsedLimit = parseInt(req.query.limit, 10);
+     if (!isNaN(parsedLimit) && parsedLimit > 0) {
+        limit = parsedLimit;
+     }
+  }
+  // --- End Limit Logic ---
 
-  // Apply filter and sort options
-  const products = await Product.find(queryFilter).sort(sortOptions);
+  console.log("API Filter:", queryFilter);
+  console.log("API Sort:", sortOptions);
+  console.log("API Limit:", limit); // Log limit
+
+  // Build the query
+  let query = Product.find(queryFilter).sort(sortOptions);
+
+  // Apply limit if specified
+  if (limit > 0) {
+     query = query.limit(limit); // Apply the limit to the query chain
+  }
+
+  // Execute the query
+  const products = await query;
+
+  // Get total count without limit for potential pagination later (optional here)
+  // const totalCount = await Product.countDocuments(queryFilter);
 
   res.status(200).json({
     success: true,
-    count: products.length,
+    count: products.length, // Count of returned products
+    // total: totalCount, // Optional: total matching filter
     data: products,
   });
 });
