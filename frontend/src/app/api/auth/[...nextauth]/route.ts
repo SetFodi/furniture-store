@@ -3,9 +3,11 @@ import NextAuth, { NextAuthOptions, User as NextAuthUser } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { JWT } from "next-auth/jwt";
 
+// 1. Add 'role' to CustomUser interface
 interface CustomUser extends NextAuthUser {
   _id?: string;
   accessToken?: string; // To hold the backend JWT
+  role?: string;        // <<< Add role field
 }
 
 export const authOptions: NextAuthOptions = {
@@ -34,21 +36,23 @@ export const authOptions: NextAuthOptions = {
 
           const loginResponse = await res.json();
 
-          if (!res.ok || !loginResponse.success || !loginResponse.token) { // Check for token
+          if (!res.ok || !loginResponse.success || !loginResponse.token) {
             throw new Error(loginResponse.message || "Invalid credentials");
           }
 
-          const user = loginResponse.data; // { _id, name, email }
-          const accessToken = loginResponse.token; // <<< Get backend JWT
+          // 2. Ensure backend login response includes 'role' in loginResponse.data
+          const user = loginResponse.data; // Expect { _id, name, email, role }
+          const accessToken = loginResponse.token;
 
           if (user && accessToken) {
-            // Return user data AND the backend token
+            // 3. Return 'role' in the user object
             return {
               id: user._id,
               _id: user._id,
               name: user.name,
               email: user.email,
-              accessToken: accessToken, // <<< Pass token to jwt callback
+              role: user.role, // <<< Pass role from backend data
+              accessToken: accessToken,
             };
           } else {
             return null;
@@ -65,22 +69,24 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }: { token: JWT; user?: CustomUser }): Promise<JWT> {
-      // Persist accessToken and user details to the NextAuth token
+      // 4. Persist 'role' to the JWT token
       if (user) {
         token.id = user.id;
         token._id = user._id;
         token.name = user.name;
-        token.accessToken = user.accessToken; // <<< Store backend token here
+        token.accessToken = user.accessToken;
+        token.role = user.role; // <<< Store role in token
       }
       return token;
     },
     async session({ session, token }: { session: any; token: JWT }): Promise<any> {
-      // Add user details and accessToken to the session object
+      // 5. Add 'role' to the session object from the token
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user._id = token._id as string;
         session.user.name = token.name as string;
-        session.accessToken = token.accessToken as string; // <<< Expose backend token here
+        session.user.role = token.role as string; // <<< Add role to session user
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },

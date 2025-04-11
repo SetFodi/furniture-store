@@ -24,12 +24,13 @@ const userSchema = new mongoose.Schema(
       minlength: [6, "Password must be at least 6 characters"],
       select: false, // Prevent password from being returned by default in queries
     },
-    // Optional: Add role for admin functionality later
-    // role: {
-    //   type: String,
-    //   enum: ['user', 'admin'],
-    //   default: 'user',
-    // },
+    // --- Role Field Added ---
+    role: {
+      type: String,
+      enum: ['user', 'admin'], // Define possible roles
+      default: 'user',        // Default role for new users
+    },
+    // --- End Role Field ---
     // resetPasswordToken: String, // For password reset functionality
     // resetPasswordExpire: Date,
   },
@@ -62,10 +63,12 @@ userSchema.pre("save", async function (next) {
 // Method to compare entered password with hashed password in DB
 userSchema.methods.matchPassword = async function (enteredPassword) {
   // 'this.password' refers to the hashed password of the specific user document
+  // Need to explicitly select password when finding user if using this method
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Optional: Method to generate JWT (useful if backend handles tokens directly)
+// const jwt = require('jsonwebtoken'); // Make sure to import jwt if using this
 // userSchema.methods.getSignedJwtToken = function () {
 //   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
 //     expiresIn: process.env.JWT_EXPIRE || '30d',

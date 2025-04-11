@@ -49,7 +49,7 @@ export interface Product {
   
   export interface Order {
     _id: string;
-    user: string; // User ID (or could be populated User object later)
+    user: string | ({ _id: string; name: string; email: string });
     orderItems: OrderItem[];
     shippingAddress: ShippingAddress;
     taxPrice: number;
@@ -61,6 +61,19 @@ export interface Product {
     deliveredAt?: string; // ISO Date string
     createdAt: string; // ISO Date string
     updatedAt: string; // ISO Date string
+  }
+  // src/types/index.ts
+// ... (Product, CartItem, Order types) ...
+
+// Add User type
+export interface User {
+    _id: string;
+    name: string;
+    email: string;
+    role: 'user' | 'admin'; // Use enum values from backend model
+    createdAt: string; // ISO Date string
+    updatedAt: string; // ISO Date string
+    // Add other fields if needed, but exclude password
   }
   
   // --- End Order related types ---

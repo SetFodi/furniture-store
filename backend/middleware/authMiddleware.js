@@ -14,9 +14,13 @@ exports.protect = asyncHandler(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(" ")[1];
   }
+  // Optional: Check for token in cookies if you plan to use them
+  // else if (req.cookies.token) {
+  //   token = req.cookies.token;
+  // }
 
   if (!token) {
-    res.status(401);
+    res.status(401); // Unauthorized
     throw new Error("Not authorized, no token provided");
   }
 
@@ -25,20 +29,32 @@ exports.protect = asyncHandler(async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find user by ID from token payload and attach to request
+    // Exclude password field from being attached
     req.user = await User.findById(decoded.id).select("-password");
 
     if (!req.user) {
+      // Handle case where user associated with token no longer exists
       res.status(401);
       throw new Error("Not authorized, user not found");
     }
 
-    next(); // Proceed
+    next(); // Proceed to the next middleware or route handler
   } catch (error) {
     console.error("Token verification failed:", error);
-    res.status(401);
+    res.status(401); // Unauthorized
     throw new Error("Not authorized, token failed verification");
   }
 });
 
-// Optional: Middleware to authorize based on roles
-// exports.authorize = (...roles) => { ... };
+// --- Admin Authorization Middleware Added ---
+// Middleware to authorize based on admin role
+exports.admin = (req, res, next) => {
+  // Assumes 'protect' middleware has already run and attached req.user
+  if (req.user && req.user.role === 'admin') {
+    next(); // User is admin, proceed
+  } else {
+    res.status(403); // Forbidden
+    throw new Error("Not authorized as an admin");
+  }
+};
+// --- End Admin Middleware ---
