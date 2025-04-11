@@ -1,15 +1,16 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; // Or choose another font
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header"; // Import Header using alias
-import Footer from "@/components/Footer"; // Import Footer using alias
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { CartProvider } from "@/context/CartContext"; // Import CartProvider
 
-const inter = Inter({ subsets: ["latin"] }); // Example font loading
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FancyFurnish - Premium Furniture", // Default title
-  description: "Discover stylish and high-quality furniture online.", // Default description
+  title: "FancyFurnish - Premium Furniture",
+  description: "Discover stylish and high-quality furniture online.",
 };
 
 export default function RootLayout({
@@ -20,15 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} flex flex-col min-h-screen`}>
-        {" "}
-        {/* Added flex classes */}
-        <Header />
-        <main className="flex-grow container mx-auto px-6 py-8">
-          {" "}
-          {/* Added flex-grow and padding */}
-          {children} {/* Page content will be rendered here */}
-        </main>
-        <Footer />
+        <CartProvider> {/* Wrap everything inside CartProvider */}
+          <Header />
+          <main className="flex-grow container mx-auto px-6 py-8">
+            {children}
+          </main>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );

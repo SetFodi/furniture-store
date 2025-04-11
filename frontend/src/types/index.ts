@@ -21,4 +21,6 @@ export interface Product {
   }
   
   // You might add other types here later (e.g., CartItem, Order)
-  
+  export interface CartItem extends Product {
+    quantity: number;
+  }
