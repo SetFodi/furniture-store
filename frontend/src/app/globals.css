@@ -1,26 +1,28 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  It's generally recommended to let Tailwind's base styles (Preflight)
+  handle the default body background, text color, and fonts.
+  You can configure these defaults and dark mode behavior in your
+  `tailwind.config.ts` file for better integration.
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  Avoid setting broad `body` or `:root` styles here unless you have a
+  specific reason and understand how they interact with Tailwind.
+*/
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/*
+  If you need specific global styles, add them below.
+  For example, to ensure text anti-aliasing:
+*/
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply antialiased; /* Applies Tailwind's anti-aliasing utility */
 }
+
+/*
+  To configure fonts, update the `theme.extend.fontFamily` section
+  in your `tailwind.config.ts`.
+
+  To configure dark mode colors, use Tailwind's dark mode strategy
+  (e.g., `darkMode: 'class'`) in `tailwind.config.ts` and utility
+  classes like `dark:bg-gray-900 dark:text-white`.
+*/

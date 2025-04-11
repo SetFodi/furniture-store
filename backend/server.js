@@ -4,8 +4,9 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const productRoutes = require("./routes/products"); // Import product routes
+const orderRoutes = require("./routes/orders");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware"); // Import error middleware (we'll create this)
-
+const authRoutes = require("./routes/auth");
 // Load env vars
 dotenv.config();
 
@@ -27,7 +28,8 @@ app.get("/", (req, res) => {
 
 // Mount Routers
 app.use("/api/products", productRoutes); // Use product routes
-
+app.use("/api/orders", orderRoutes); // Use order routes
+app.use("/api/auth", authRoutes);
 // Error Handling Middleware (Should be after routes)
 // We need to create these middleware functions
 app.use(notFound);
