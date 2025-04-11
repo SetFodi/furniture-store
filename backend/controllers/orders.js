@@ -98,3 +98,28 @@ exports.getMyOrders = asyncHandler(async (req, res, next) => {
     data: orders,
   });
 });
+exports.getOrderById = asyncHandler(async (req, res, next) => {
+    const orderId = req.params.id;
+    const userId = req.user._id; // From protect middleware
+  
+    // Find the order by its ID and also populate the user field (name and email)
+    // We use populate to get user details instead of just the ID
+    const order = await Order.findById(orderId); //.populate('user', 'name email'); // Populate later if needed
+  
+    if (!order) {
+      res.status(404);
+      throw new Error(`Order not found with ID: ${orderId}`);
+    }
+  
+    // Authorization Check: Ensure the logged-in user owns the order
+    // (Or implement admin role check later: || req.user.role === 'admin')
+    if (order.user.toString() !== userId.toString()) {
+      res.status(401); // Unauthorized
+      throw new Error("Not authorized to view this order");
+    }
+  
+    res.status(200).json({
+      success: true,
+      data: order,
+    });
+  });
