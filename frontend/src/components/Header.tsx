@@ -1,7 +1,8 @@
 // src/components/Header.tsx
 import Link from "next/link";
 import React from "react";
-import CartIcon from "./CartIcon"; // Import the new CartIcon component
+import CartIcon from "./CartIcon";
+import UserNav from "./UserNav"; // Import the new UserNav component
 
 const Header: React.FC = () => {
   return (
@@ -15,8 +16,8 @@ const Header: React.FC = () => {
           FancyFurnish
         </Link>
 
-        {/* Navigation Links */}
-        <div className="flex items-center space-x-6">
+        {/* Middle Navigation Links */}
+        <div className="hidden md:flex items-center space-x-6">
           <Link
             href="/"
             className="text-gray-600 hover:text-indigo-600 transition duration-200"
@@ -29,11 +30,13 @@ const Header: React.FC = () => {
           >
             Products
           </Link>
+          {/* Add other links like 'My Orders' later, potentially checking session status */}
         </div>
 
-        {/* Cart Icon/Link */}
-        <div>
-          <CartIcon /> {/* Use the CartIcon component here */}
+        {/* Right Side Icons/Actions */}
+        <div className="flex items-center space-x-4">
+          <CartIcon /> {/* Cart icon remains */}
+          <UserNav /> {/* Use the UserNav component here */}
         </div>
       </nav>
     </header>
