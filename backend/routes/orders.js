@@ -1,14 +1,15 @@
 // backend/routes/orders.js
 const express = require("express");
-const { addOrderItems } = require("../controllers/orders");
-// const { protect } = require('../middleware/authMiddleware'); // Add later for user auth
+const { addOrderItems, getMyOrders } = require("../controllers/orders");
+const { protect } = require("../middleware/authMiddleware"); // Import protect
 
 const router = express.Router();
 
-// Route for creating an order
-// Add protect middleware later: router.route('/').post(protect, addOrderItems);
-router.route("/").post(addOrderItems);
+// Apply protect middleware
+router.route("/").post(protect, addOrderItems); // Requires login
+router.route("/myorders").get(protect, getMyOrders); // Requires login
 
-// Add routes for getting orders later (e.g., /:id, /myorders)
+// Add route for getting single order by ID later if needed
+// router.route('/:id').get(protect, getOrderById);
 
 module.exports = router;

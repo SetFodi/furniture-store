@@ -1,41 +1,40 @@
 // backend/controllers/orders.js
 const Order = require("../models/Order");
-const Product = require("../models/Product"); // Need Product model for stock updates
+const Product = require("../models/Product");
 const asyncHandler = require("../utils/asyncHandler");
 
 // @desc    Create new order
 // @route   POST /api/orders
-// @access  Public (for now, should be Private/User later)
+// @access  Private (Protected by middleware)
 exports.addOrderItems = asyncHandler(async (req, res, next) => {
+  // Get userId from req.user (set by protect middleware)
+  const userId = req.user._id; // <<< Use req.user
+
+  // Destructure other fields from req.body
   const {
-    orderItems, // Array of { product (ID), name, quantity, imageUrl, price }
-    shippingAddress, // Object with address details
+    orderItems,
+    shippingAddress,
     taxPrice,
     shippingPrice,
     totalPrice,
-    // paymentMethod, // Add if needed
   } = req.body;
 
   // Basic validation
   if (!orderItems || orderItems.length === 0) {
-    res.status(400);
-    throw new Error("No order items provided");
+    res.status(400); throw new Error("No order items provided");
   }
   if (!shippingAddress) {
-    res.status(400);
-    throw new Error("Shipping address is required");
+    res.status(400); throw new Error("Shipping address is required");
   }
 
-  // --- Optional: Server-side validation & Stock Check ---
-  // It's safer to re-validate prices and check stock on the server
-  // to prevent manipulation on the client-side.
+  // --- Server-side validation & Stock Check ---
   let calculatedSubtotal = 0;
-  const itemIds = orderItems.map((item) => item.product); // Get product IDs
+  const itemIds = orderItems.map((item) => item.product);
   const productsFromDB = await Product.find({ _id: { $in: itemIds } });
 
   const validatedOrderItems = orderItems.map((itemClient) => {
     const productDB = productsFromDB.find(
-      (p) => p._id.toString() === itemClient.product // Find matching product from DB
+      (p) => p._id.toString() === itemClient.product
     );
     if (!productDB) {
       throw new Error(`Product not found: ID ${itemClient.product}`);
@@ -45,30 +44,23 @@ exports.addOrderItems = asyncHandler(async (req, res, next) => {
         `Not enough stock for ${productDB.name}. Available: ${productDB.stock}, Requested: ${itemClient.quantity}`
       );
     }
-    // Use DB price for calculation to be safe
     calculatedSubtotal += productDB.price * itemClient.quantity;
     return {
-      ...itemClient, // Keep client name, quantity, image
-      price: productDB.price, // Use DB price
-      product: productDB._id, // Ensure it's the ObjectId
+      ...itemClient,
+      price: productDB.price,
+      product: productDB._id,
     };
   });
-
-  // Optional: Recalculate tax/shipping/total on server if needed, or trust client for now
-  // const serverCalculatedTax = calculatedSubtotal * 0.08; // Example
-  // const serverCalculatedShipping = calculatedSubtotal > 100 ? 0 : 15; // Example
-  // const serverCalculatedTotal = calculatedSubtotal + serverCalculatedTax + serverCalculatedShipping;
-  // --- End Optional Validation ---
+  // --- End Validation ---
 
   // Create the order object
   const order = new Order({
-    orderItems: validatedOrderItems, // Use validated items
-    // user: req.user._id, // Add this when auth is implemented
+    user: userId, // <<< Assign userId from req.user
+    orderItems: validatedOrderItems,
     shippingAddress,
-    taxPrice, // Using client-provided for now
-    shippingPrice, // Using client-provided for now
-    totalPrice, // Using client-provided for now
-    // paymentMethod,
+    taxPrice,
+    shippingPrice,
+    totalPrice,
     isPaid: true, // Simulation
     paidAt: Date.now(), // Simulation
   });
@@ -76,10 +68,9 @@ exports.addOrderItems = asyncHandler(async (req, res, next) => {
   const createdOrder = await order.save();
 
   // --- Update Product Stock ---
-  // Important: Decrease stock count for ordered items
   const stockUpdatePromises = createdOrder.orderItems.map(async (item) => {
     return Product.findByIdAndUpdate(item.product, {
-      $inc: { stock: -item.quantity }, // Decrement stock by quantity ordered
+      $inc: { stock: -item.quantity },
     });
   });
   await Promise.all(stockUpdatePromises);
@@ -91,4 +82,19 @@ exports.addOrderItems = asyncHandler(async (req, res, next) => {
   });
 });
 
-// Add other controller functions later (getOrderById, getUserOrders, etc.)
+// @desc    Get logged in user's orders
+// @route   GET /api/orders/myorders
+// @access  Private (Protected by middleware)
+exports.getMyOrders = asyncHandler(async (req, res, next) => {
+  // Get userId reliably from req.user (set by protect middleware)
+  const userId = req.user._id; // <<< Use req.user
+
+  // Find orders for the authenticated user
+  const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: orders.length,
+    data: orders,
+  });
+});

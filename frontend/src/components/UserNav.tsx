@@ -17,6 +17,13 @@ const UserNav: React.FC = () => {
   if (status === "authenticated") {
     return (
       <div className="flex items-center space-x-4">
+              <Link
+          href="/my-orders"
+          className="text-gray-600 hover:text-indigo-600 transition duration-200 text-sm font-medium"
+        >
+          My Orders
+        </Link>
+        <span className="text-gray-300 hidden sm:block">|</span> {/* Separator */}
         {/* Optional: Display user name or link to profile */}
         <span className="text-gray-700 text-sm hidden sm:block">
           Hi, {session.user?.name?.split(" ")[0] || "User"}! {/* Show first name */}
