@@ -1,29 +1,38 @@
 // src/components/AddToCartButton.tsx
-"use client"; // Mark as a Client Component
+"use client";
 
 import React from "react";
 import { useCart } from "@/context/CartContext";
 import { Product } from "@/types";
+import { Button } from "@/components/ui/button"; // Import Button
+import { toast } from "react-hot-toast";       // Import toast
+import { ShoppingCart } from "lucide-react";   // Import an icon
 
 interface AddToCartButtonProps {
   product: Product;
 }
 
 const AddToCartButton: React.FC<AddToCartButtonProps> = ({ product }) => {
-  const { addToCart, cartItems } = useCart(); // Get addToCart function and items
+  const { addToCart, cartItems } = useCart();
 
-  // Find this item in the cart to check stock vs quantity
   const itemInCart = cartItems.find((item) => item._id === product._id);
   const currentQuantityInCart = itemInCart?.quantity || 0;
 
   const handleAddToCart = () => {
     if (product.stock > 0 && currentQuantityInCart < product.stock) {
-      addToCart(product, 1); // Add one item
-      // Optional: Add user feedback (e.g., toast notification)
+      addToCart(product, 1);
+      // Show success toast
+      toast.success(`${product.name} added to cart!`);
       console.log(`Added ${product.name} to cart.`);
     } else {
+      // Show error toast if trying to add more than stock
+      if (currentQuantityInCart >= product.stock) {
+         toast.error(`Max quantity (${product.stock}) for ${product.name} already in cart.`);
+      } else {
+         // This case shouldn't be reachable if button is disabled correctly
+         toast.error(`Cannot add ${product.name} to cart.`);
+      }
       console.log("Cannot add more, item out of stock or max quantity reached.");
-      // Optional: Disable button or show message
     }
   };
 
@@ -32,21 +41,19 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({ product }) => {
   const isDisabled = isOutOfStock || maxQuantityReached;
 
   return (
-    <button
+    <Button // Use Button component
       onClick={handleAddToCart}
       disabled={isDisabled}
-      className={`w-full text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-        isDisabled
-          ? "bg-gray-400" // Disabled style
-          : "bg-indigo-600 hover:bg-indigo-700" // Enabled style
-      }`}
+      className="w-full" // Make button full width
+      size="lg" // Make button slightly larger
     >
+      <ShoppingCart size={18} className="mr-2" /> {/* Add icon */}
       {isOutOfStock
         ? "Out of Stock"
         : maxQuantityReached
           ? "Max Quantity in Cart"
           : "Add to Cart"}
-    </button>
+    </Button>
   );
 };
 

@@ -7,8 +7,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button"; // Import Button
+import { Input } from "@/components/ui/input";   // Import Input
+import { Label } from "@/components/ui/label";   // Import Label
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"; // Import Card components
+import { toast } from "react-hot-toast";         // Import toast
 
-// Extend session type if needed for better type safety
+// Extend session type
 import { Session } from "next-auth";
 interface CustomSession extends Session {
   accessToken?: string;
@@ -21,14 +27,13 @@ const CheckoutPage: React.FC = () => {
   const { cartItems, getCartTotal, clearCart, getItemCount } = useCart();
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  // Use custom session type
-  const { data: session, status } = useSession() as { data: CustomSession | null; status: "loading" | "authenticated" | "unauthenticated" };
+  const { data: session, status } = useSession() as { data: CustomSession | null; status: string };
 
   const [formData, setFormData] = useState({ name: "", email: "", address: "", city: "", postalCode: "", country: "United States" });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null); // Use toast instead
 
-  // Authentication Check and Empty Cart Redirect
+  // Auth Check & Empty Cart Redirect (remains the same)
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace(`/login?callbackUrl=/checkout`);
@@ -38,12 +43,17 @@ const CheckoutPage: React.FC = () => {
     }
   }, [status, router, cartItems, isProcessing]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { // Only for Input now
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Calculate totals
+  // Handler specifically for Select component
+  const handleCountryChange = (value: string) => {
+     setFormData((prev) => ({ ...prev, country: value }));
+  };
+
+  // Calculate totals (remains the same)
   const subtotal = getCartTotal();
   const taxPrice = subtotal * 0.08;
   const shippingPrice = subtotal > 100 ? 0 : 15;
@@ -52,24 +62,19 @@ const CheckoutPage: React.FC = () => {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    toast.dismiss(); // Clear previous toasts
 
-    // Check authentication and token availability
     if (status !== "authenticated" || !session?.accessToken) {
-      setError("Authentication required or token missing. Please log in again.");
-      return;
+      toast.error("Authentication required or token missing."); return;
     }
-
-    // Form field validation
     if (!formData.name || !formData.email || !formData.address || !formData.city || !formData.postalCode) {
-      setError("Please fill in all required shipping fields."); return;
+      toast.error("Please fill in all required shipping fields."); return;
     }
-    if (!apiUrl) { setError("API endpoint not configured."); return; }
+    if (!apiUrl) { toast.error("API endpoint not configured."); return; }
 
     setIsProcessing(true);
 
-    // Prepare order data (no userId needed in body)
-    const orderData = {
+    const orderData = { /* ... (order data remains the same) ... */
       orderItems: cartItems.map((item) => ({ product: item._id, name: item.name, quantity: item.quantity, imageUrl: item.imageUrl, price: item.price })),
       shippingAddress: { name: formData.name, email: formData.email, address: formData.address, city: formData.city, postalCode: formData.postalCode, country: formData.country },
       taxPrice: parseFloat(taxPrice.toFixed(2)),
@@ -78,12 +83,11 @@ const CheckoutPage: React.FC = () => {
     };
 
     try {
-      // Add Authorization header with backend JWT
       const response = await fetch(`${apiUrl}/orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.accessToken}`, // <<< Use token from session
+          Authorization: `Bearer ${session.accessToken}`,
         },
         body: JSON.stringify(orderData),
       });
@@ -91,56 +95,129 @@ const CheckoutPage: React.FC = () => {
       const responseData = await response.json();
       if (!response.ok) { throw new Error(responseData.message || `Order placement failed: ${response.statusText}`); }
 
-      console.log("Order placed successfully via API:", responseData);
+      toast.success("Order placed successfully!");
       clearCart();
       const newOrderId = responseData.data?._id;
       router.push(newOrderId ? `/order-success?orderId=${newOrderId}` : "/order-success");
 
     } catch (err: any) {
       console.error("Order placement API error:", err);
-      setError(err.message || "Failed to place order. Please try again.");
+      toast.error(err.message || "Failed to place order. Please try again.");
       setIsProcessing(false);
     }
   };
 
-  // Loading/Checking States
+  // Loading/Checking States (remain the same)
   if (status === "loading") { return <div className="text-center p-10">Loading session...</div>; }
   if (status !== "authenticated" || cartItems.length === 0) { return <div className="text-center p-10">Checking cart and session...</div>; }
 
-  // Render Checkout Form and Summary
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Checkout</h1>
       <form onSubmit={handlePlaceOrder} className="flex flex-col lg:flex-row gap-8 lg:gap-12">
         {/* Shipping/Billing Form */}
-        <div className="lg:w-3/5 bg-white p-6 shadow-md rounded-lg">
-           <h2 className="text-xl font-semibold mb-4">Shipping Details</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {/* Input fields remain the same */}
-             <div><label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label><input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} required className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"/></div>
-             <div><label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email Address <span className="text-red-500">*</span></label><input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"/></div>
-             <div className="md:col-span-2"><label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Street Address <span className="text-red-500">*</span></label><input type="text" id="address" name="address" value={formData.address} onChange={handleInputChange} required className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"/></div>
-             <div><label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">City <span className="text-red-500">*</span></label><input type="text" id="city" name="city" value={formData.city} onChange={handleInputChange} required className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"/></div>
-             <div><label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">Postal Code <span className="text-red-500">*</span></label><input type="text" id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleInputChange} required className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"/></div>
-             <div className="md:col-span-2"><label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Country</label><select id="country" name="country" value={formData.country} onChange={handleInputChange} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"><option>United States</option><option>Canada</option><option>Mexico</option></select></div>
-           </div>
-           <div className="mt-6 border-t pt-4"><h3 className="text-lg font-semibold mb-3">Payment Details</h3><p className="text-sm text-gray-600">This is a simulated checkout...</p></div>
-        </div>
+        <Card className="lg:w-3/5"> {/* Use Card */}
+          <CardHeader>
+            <CardTitle>Shipping Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
+                <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required disabled={isProcessing} />
+              </div>
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label>
+                <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} required disabled={isProcessing} />
+              </div>
+            </div>
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="address">Street Address <span className="text-red-500">*</span></Label>
+              <Input id="address" name="address" value={formData.address} onChange={handleInputChange} required disabled={isProcessing} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* City */}
+              <div className="space-y-2">
+                <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
+                <Input id="city" name="city" value={formData.city} onChange={handleInputChange} required disabled={isProcessing} />
+              </div>
+              {/* Postal Code */}
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
+                <Input id="postalCode" name="postalCode" value={formData.postalCode} onChange={handleInputChange} required disabled={isProcessing} />
+              </div>
+              {/* Country */}
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Select name="country" value={formData.country} onValueChange={handleCountryChange} disabled={isProcessing}>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="United States">United States</SelectItem>
+                    <SelectItem value="Canada">Canada</SelectItem>
+                    <SelectItem value="Mexico">Mexico</SelectItem>
+                    {/* Add more countries */}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {/* Mock Payment Section */}
+            <div className="mt-6 border-t pt-4">
+              <h3 className="text-lg font-semibold mb-3">Payment Details</h3>
+              <p className="text-sm text-muted-foreground">
+                This is a simulated checkout. No real payment will be processed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Order Summary */}
         <div className="lg:w-2/5">
-          <div className="bg-white shadow-md rounded-lg p-6 sticky top-24">
-            <h2 className="text-xl font-semibold mb-4 border-b pb-2">Your Order ({totalItems} items)</h2>
-            {/* Mini Cart Items */}
-            <div className="max-h-60 overflow-y-auto mb-4 space-y-3 pr-2">
-              {cartItems.map((item) => ( <div key={item._id} className="flex items-center text-sm"><div className="relative w-12 h-12 mr-3 flex-shrink-0"><Image src={item.imageUrl || "https://placehold.co/50x50"} alt={item.name} fill style={{ objectFit: "cover" }} className="rounded" sizes="50px"/></div><div className="flex-grow"><p className="font-medium text-gray-800">{item.name}</p><p className="text-gray-500">Qty: {item.quantity}</p></div><p className="font-medium text-gray-800">${(item.price * item.quantity).toFixed(2)}</p></div> ))}
-            </div>
-            {/* Totals */}
-            <div className="space-y-2 mb-4 border-t pt-4"><div className="flex justify-between text-sm"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div><div className="flex justify-between text-sm text-gray-600"><span>Shipping</span><span>{shippingPrice === 0 ? "Free" : `$${shippingPrice.toFixed(2)}`}</span></div><div className="flex justify-between text-sm text-gray-600"><span>Est. Tax</span><span>${taxPrice.toFixed(2)}</span></div></div>
-            <div className="border-t pt-4"><div className="flex justify-between font-bold text-lg"><span>Order Total</span><span>${totalPrice.toFixed(2)}</span></div></div>
-            {error && (<p className="text-red-500 text-sm mt-4">{error}</p>)}
-            <button type="submit" disabled={isProcessing || status !== 'authenticated'} className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white text-center font-bold py-3 px-6 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-wait">{isProcessing ? "Processing..." : "Place Order"}</button>
-            <Link href="/cart" className="block text-center mt-3 text-sm text-indigo-600 hover:text-indigo-800">&larr; Return to Cart</Link>
-          </div>
+          <Card className="sticky top-24"> {/* Use Card and keep sticky */}
+            <CardHeader>
+              <CardTitle>Your Order ({totalItems} items)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* Mini Cart Items */}
+              <div className="max-h-60 overflow-y-auto mb-4 space-y-3 pr-2 border-b pb-4">
+                {cartItems.map((item) => (
+                  <div key={item._id} className="flex items-center text-sm gap-3">
+                    <div className="relative w-12 h-12 mr-1 flex-shrink-0">
+                      <Image src={item.imageUrl || "https://placehold.co/50x50"} alt={item.name} fill style={{ objectFit: "cover" }} className="rounded" sizes="50px"/>
+                    </div>
+                    <div className="flex-grow">
+                      <p className="font-medium text-foreground">{item.name}</p>
+                      <p className="text-muted-foreground">Qty: {item.quantity}</p>
+                    </div>
+                    <p className="font-medium text-foreground w-16 text-right">${(item.price * item.quantity).toFixed(2)}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Totals */}
+              <div className="space-y-1 text-sm mb-4">
+                <div className="flex justify-between"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Shipping</span><span>{shippingPrice === 0 ? "Free" : `$${shippingPrice.toFixed(2)}`}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Est. Tax</span><span>${taxPrice.toFixed(2)}</span></div>
+              </div>
+              <div className="border-t pt-4">
+                <div className="flex justify-between font-bold text-lg"><span>Order Total</span><span>${totalPrice.toFixed(2)}</span></div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-3"> {/* Use CardFooter */}
+               <Button type="submit" disabled={isProcessing} className="w-full" size="lg">
+                 {isProcessing ? "Processing..." : "Place Order"}
+               </Button>
+               <Link href="/cart" legacyBehavior={false}> {/* Use standard Link behavior */}
+   <Button variant="outline" className="w-full"> {/* Removed asChild */}
+      &larr; Return to Cart
+   </Button>
+</Link>
+            </CardFooter>
+          </Card>
         </div>
       </form>
     </div>
