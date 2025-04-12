@@ -1,19 +1,31 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Playfair_Display, Raleway } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/context/CartContext";
 import AuthProvider from "@/components/AuthProvider";
 import { Toaster } from "react-hot-toast";
-import { ThemeProvider } from "@/components/ThemeProvider"; // Ensure this path is correct
+import { ThemeProvider } from "@/components/ThemeProvider";
 
-const inter = Inter({ subsets: ["latin"] });
+// Font optimization
+const playfair = Playfair_Display({ 
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap"
+});
+
+const raleway = Raleway({ 
+  subsets: ["latin"],
+  variable: "--font-raleway",
+  display: "swap"
+});
 
 export const metadata: Metadata = {
-  title: "FancyFurnish - Premium Furniture",
-  description: "Discover stylish and high-quality furniture online.",
+  title: "FancyFurnish - Premium Luxury Furniture",
+  description: "Discover our curated collection of premium furniture pieces to transform your living spaces with elegance and style.",
+  keywords: "luxury furniture, modern furniture, designer pieces, home decor, interior design",
 };
 
 export default function RootLayout({
@@ -22,37 +34,39 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      {/* Ensure NO whitespace/comments between <html> and <body> */}
-      <body className={`${inter.className} flex flex-col min-h-screen`}>
-        {/* Ensure NO whitespace/comments between <body> and <ThemeProvider> */}
+    <html lang="en" suppressHydrationWarning className={`${playfair.variable} ${raleway.variable}`}>
+      <body className={`${raleway.className} flex flex-col min-h-screen antialiased`}>
         <ThemeProvider
            attribute="class"
            defaultTheme="system"
            enableSystem
            disableTransitionOnChange
         >
-          {/* Ensure NO whitespace/comments between <ThemeProvider> and <AuthProvider> */}
           <AuthProvider>
-            {/* Ensure NO whitespace/comments between <AuthProvider> and <CartProvider> */}
             <CartProvider>
-              {/* Ensure NO whitespace/comments between <CartProvider> and <Header> */}
-              <Header />
-              <main className="flex-grow container mx-auto px-4 sm:px-6 py-8">
-                {children}
-              </main>
-              <Footer />
-              <Toaster position="bottom-right" />
-              {/* Ensure NO whitespace/comments between <Toaster> and </CartProvider> */}
+              <div className="page-transition">
+                <Header />
+                {/* Added padding-top to create global margin below header */}
+                <main className="flex-grow pt-24">
+                  {children}
+                </main>
+                <Footer />
+              </div>
+              <Toaster 
+                position="bottom-right" 
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'var(--card)',
+                    color: 'var(--card-foreground)',
+                    border: '1px solid var(--border)',
+                  },
+                }} 
+              />
             </CartProvider>
-            {/* Ensure NO whitespace/comments between </CartProvider> and </AuthProvider> */}
           </AuthProvider>
-          {/* Ensure NO whitespace/comments between </AuthProvider> and </ThemeProvider> */}
         </ThemeProvider>
-        {/* Ensure NO whitespace/comments between </ThemeProvider> and </body> */}
       </body>
-      {/* Ensure NO whitespace/comments between </body> and </html> */}
     </html>
   );
 }
-

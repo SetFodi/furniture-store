@@ -3,59 +3,138 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
-import {
-  Card,
-  CardContent,
-  CardFooter, // Optional: Use if adding actions like Add to Cart here
-  CardHeader, // Optional: Can use for image or title
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card"; // Import Card components
-import { Badge } from "@/components/ui/badge"; // Optional: For category/tags
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Star } from "lucide-react";
+import ProductQuickActions from "./ProductQuickActions";
 
 interface ProductCardProps {
   product: Product;
 }
 
+// This is a server component for the main card
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  // Format price with commas
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(product.price);
+  
+  // Display ratings stars
+  const renderRatingStars = (rating: number) => {
+    return (
+      <div className="flex items-center space-x-1">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            size={14}
+            className={`${
+              i < Math.floor(rating)
+                ? "text-primary fill-primary"
+                : i < rating
+                ? "text-primary fill-primary opacity-50"
+                : "text-muted-foreground"
+            }`}
+          />
+        ))}
+        <span className="text-xs text-muted-foreground ml-1">
+          ({product.numReviews})
+        </span>
+      </div>
+    );
+  };
+
+  // Verify the imageUrl to ensure it's a furniture image
+  // This is a basic check to filter out non-furniture images
+  const isFurnitureImage = (url: string): boolean => {
+    // These are common keywords that might indicate non-furniture images
+    const nonFurnitureKeywords = ['supermarket', 'grocery', 'store', 'shelf', 'aisle'];
+    const lowerUrl = url.toLowerCase();
+    
+    // Return false if any keyword is found in the URL
+    return !nonFurnitureKeywords.some(keyword => lowerUrl.includes(keyword));
+  };
+  
+  // Use a fallback image if the product image isn't a furniture image
+  const imageUrl = product.imageUrl && isFurnitureImage(product.imageUrl) 
+    ? product.imageUrl 
+    : "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1170&q=80"; // Fallback furniture image
+
   return (
-    <Link href={`/products/${product._id}`} className="group outline-none" aria-label={`View details for ${product.name}`}>
-      <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-lg focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 h-full flex flex-col"> {/* Added focus-within, h-full, flex */}
-        <CardHeader className="p-0 relative"> {/* Remove padding for image */}
-          {/* Product Image */}
-          <div className="aspect-square w-full overflow-hidden relative bg-muted"> {/* Fixed aspect ratio, overflow hidden */}
+    <div className="h-full group hover:-translate-y-2 transition-transform duration-300">
+      <Link href={`/products/${product._id}`} className="block h-full">
+        <Card 
+          className="overflow-hidden h-full flex flex-col bg-card/50 backdrop-blur-sm border border-border/50 shadow-sm transition-all duration-300 hover:shadow-lg cursor-pointer"
+        >
+          {/* Product Image with Hover Effect */}
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted/30">
             <Image
-              src={product.imageUrl || "https://placehold.co/600x600"} // Use a square placeholder if needed
+              src={imageUrl}
               alt={product.name}
               fill
-              style={{ objectFit: "cover" }}
-              className="transition-transform duration-500 ease-in-out group-hover:scale-105" // Smoother scale
-              sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw" // Adjusted sizes
-              // Add placeholder if needed: placeholder="blur" blurDataURL="..."
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             />
+            
+            {/* Category Badge */}
+            <Badge 
+              variant="secondary" 
+              className="absolute top-3 left-3 bg-background/80 backdrop-blur-sm text-foreground text-xs px-2 py-1"
+            >
+              {product.category}
+            </Badge>
+            
+            {/* Display stock status if low */}
+            {product.stock <= 5 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute top-3 right-3 text-xs"
+              >
+                {product.stock === 0 ? 'Sold Out' : 'Low Stock'}
+              </Badge>
+            )}
+            
+            {/* Add to cart button overlay */}
+            <div className="absolute inset-0 flex items-end justify-center p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%)' }}>
+              <ProductQuickActions productId={product._id} />
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-4 flex-grow"> {/* Add flex-grow to push footer down */}
-          {/* Optional: Category Badge */}
-          {/* <Badge variant="outline" className="mb-2">{product.category}</Badge> */}
-          <CardTitle className="text-lg font-semibold leading-tight tracking-tight truncate group-hover:text-primary">
-            {product.name}
-          </CardTitle>
-          <CardDescription className="mt-1 text-sm text-muted-foreground">
-             {/* Shorten description or show category */}
-             {product.category}
-             {/* Or: {product.description.substring(0, 50)}{product.description.length > 50 ? '...' : ''} */}
-          </CardDescription>
-        </CardContent>
-        <CardFooter className="p-4 pt-0"> {/* Remove top padding */}
-          {/* Price */}
-          <p className="text-xl font-bold text-foreground">
-            ${product.price.toFixed(2)}
-          </p>
-          {/* Optional: Add rating or quick add button here */}
-        </CardFooter>
-      </Card>
-    </Link>
+          
+          {/* Product Info */}
+          <CardContent className="p-4 flex-grow flex flex-col">
+            <h3 className="font-medium text-base sm:text-lg leading-tight tracking-tight line-clamp-2 group-hover:text-primary transition-colors">
+              {product.name}
+            </h3>
+            
+            {/* Product material and rating */}
+            <div className="mt-2 flex flex-col space-y-1">
+              {product.material && (
+                <p className="text-xs text-muted-foreground">
+                  {product.material}
+                </p>
+              )}
+              {product.rating > 0 && renderRatingStars(product.rating)}
+            </div>
+          </CardContent>
+          
+          {/* Price and dimensions */}
+          <CardFooter className="p-4 pt-0 mt-auto border-t border-border/50">
+            <div className="w-full flex justify-between items-center">
+              <p className="text-lg font-semibold text-foreground">
+                {formattedPrice}
+              </p>
+              {product.dimensions && (
+                <span className="text-xs text-muted-foreground">
+                  {product.dimensions.width}×{product.dimensions.depth} cm
+                </span>
+              )}
+            </div>
+          </CardFooter>
+        </Card>
+      </Link>
+    </div>
   );
 };
 

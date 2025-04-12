@@ -67,7 +67,15 @@ async function ProductList({ category, sort, minPrice, maxPrice }: {
 
 
 // Component to render the skeletons (remains the same)
-function ProductGridSkeleton() { /* ... */ }
+function ProductGridSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <ProductCardSkeleton key={`skeleton-${index}`} />
+      ))}
+    </>
+  );
+}
 
 
 // --- Updated Main Page Component ---
@@ -82,18 +90,22 @@ const ProductsPage = ({
   const minPrice = typeof searchParams?.minPrice === 'string' ? searchParams.minPrice : undefined;
   const maxPrice = typeof searchParams?.maxPrice === 'string' ? searchParams.maxPrice : undefined;
 
-  // Determine title based on category filter
-  const pageTitle = category ? `${category} Furniture` : "Our Furniture";
+  // Determine title based on category filter with formatting improvements
+  const categoryName = category ? category.replace(/\+/g, ' ') : '';
+  const pageTitle = category ? `${categoryName} Furniture` : "Our Furniture";
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6 text-center">{pageTitle}</h1>
+    <div className="mt-24"> {/* Added margin top to prevent navbar overlap */}
+      <div className="mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-4">{pageTitle}</h1>
+        <div className="h-1 w-20 bg-primary"></div>
+      </div>
 
       {/* Render Filter Component */}
       <ProductFilters />
 
       {/* Product Grid with Suspense */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 mt-8">
          <Suspense key={JSON.stringify(searchParams)} fallback={<ProductGridSkeleton />}> {/* Add key to force refetch on param change */}
             {/* Pass extracted params to ProductList */}
             {/* @ts-expect-error Async Server Component */}

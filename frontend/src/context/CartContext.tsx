@@ -9,11 +9,12 @@ import React, {
   ReactNode,
 } from "react";
 import { CartItem, Product } from "@/types";
+import { toast } from "react-hot-toast";
 
 // Define the shape of the context data and functions
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Product, quantity: number) => void;
+  addToCart: (product: Product | { _id: string }, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -48,31 +49,63 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     }
   }, [cartItems]);
 
-  const addToCart = (product: Product, quantity: number) => {
-    setCartItems((prevItems) => {
-      const existingItem = prevItems.find(
-        (item) => item._id === product._id
-      );
-      if (existingItem) {
-        // Update quantity if item already exists
-        const newQuantity = existingItem.quantity + quantity;
-        // Ensure quantity doesn't exceed stock
-        const finalQuantity = Math.min(newQuantity, product.stock);
-        return prevItems.map((item) =>
-          item._id === product._id
-            ? { ...item, quantity: finalQuantity }
-            : item
-        );
-      } else {
-        // Add new item, ensuring quantity doesn't exceed stock
-        const finalQuantity = Math.min(quantity, product.stock);
-        if (finalQuantity <= 0) return prevItems; // Don't add if quantity is zero or less
-        return [...prevItems, { ...product, quantity: finalQuantity }];
+  // Enhanced addToCart function that handles both full products and product IDs
+  const addToCart = async (product: Product | { _id: string }, quantity: number = 1) => {
+    try {
+      // If we only have the product ID, fetch the full product
+      if (!('name' in product)) {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const response = await fetch(`${apiUrl}/products/${product._id}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch product");
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || "API error");
+        }
+        
+        product = data.data as Product;
+        // Notify user of success
+        toast.success(`${product.name} added to cart`);
       }
-    });
+
+      // Now we have the full product, continue with existing logic
+      setCartItems((prevItems) => {
+        const existingItem = prevItems.find(
+          (item) => item._id === product._id
+        );
+        if (existingItem) {
+          // Update quantity if item already exists
+          const newQuantity = existingItem.quantity + quantity;
+          // Ensure quantity doesn't exceed stock
+          const finalQuantity = Math.min(newQuantity, (product as Product).stock);
+          return prevItems.map((item) =>
+            item._id === product._id
+              ? { ...item, quantity: finalQuantity }
+              : item
+          );
+        } else {
+          // Add new item, ensuring quantity doesn't exceed stock
+          const finalQuantity = Math.min(quantity, (product as Product).stock);
+          if (finalQuantity <= 0) return prevItems; // Don't add if quantity is zero or less
+          return [...prevItems, { ...(product as Product), quantity: finalQuantity }];
+        }
+      });
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      toast.error("Failed to add item to cart");
+    }
   };
 
   const removeFromCart = (productId: string) => {
+    // Find item to show in toast notification
+    const itemToRemove = cartItems.find(item => item._id === productId);
+    if (itemToRemove) {
+      toast.success(`${itemToRemove.name} removed from cart`);
+    }
+    
     setCartItems((prevItems) =>
       prevItems.filter((item) => item._id !== productId)
     );
@@ -96,6 +129,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const clearCart = () => {
     setCartItems([]);
     localStorage.removeItem("shoppingCart"); // Also clear storage
+    toast.success("Cart cleared");
   };
 
   const getCartTotal = (): number => {
