@@ -1,14 +1,13 @@
 // src/app/products/page.tsx
 import ProductCard from "@/components/ProductCard";
 import ProductCardSkeleton from "@/components/ProductCardSkeleton";
-import ProductFilters from "@/components/ProductFilters"; // <<< Import Filters
+import ProductFilters from "@/components/ProductFilters";
 import { Product } from "@/types";
 import React, { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-// --- Updated Fetch Function ---
-// Accepts category, sort, minPrice, maxPrice
+// Fetch Function - Keep your existing function
 async function getProducts(params: {
    category?: string;
    sort?: string;
@@ -38,11 +37,8 @@ async function getProducts(params: {
     return data.data as Product[];
   } catch (error) { console.error("Error fetching products:", error); return []; }
 }
-// --- End Updated Fetch Function ---
 
-
-// --- Updated ProductList Component ---
-// Accepts all relevant params
+// Products List Component - Updated grid layout for smaller items
 async function ProductList({ category, sort, minPrice, maxPrice }: {
    category?: string;
    sort?: string;
@@ -56,60 +52,71 @@ async function ProductList({ category, sort, minPrice, maxPrice }: {
       return (
          <div className="text-center text-muted-foreground mt-10 col-span-full">
             <p>No products found matching your criteria.</p>
-            {/* Keep clear filter link concept if needed, though button is now separate */}
-            {/* <Button variant="link" asChild className="mt-2"><Link href="/products">View All Products</Link></Button> */}
+            <Button variant="outline" className="mt-4">
+              <Link href="/products">View All Products</Link>
+            </Button>
          </div>
       );
    }
-   return ( <> {products.map((product) => ( <ProductCard key={product._id} product={product} /> ))} </> );
+   
+   // Using a more compact grid with smaller gaps
+   return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+         {products.map((product) => (
+            <ProductCard key={product._id} product={product} />
+         ))}
+      </div>
+   );
 }
-// --- End Updated ProductList Component ---
 
-
-// Component to render the skeletons (remains the same)
+// Skeleton loading grid - Updated to match the product grid
 function ProductGridSkeleton() {
   return (
-    <>
-      {Array.from({ length: 8 }).map((_, index) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+      {Array.from({ length: 10 }).map((_, index) => (
         <ProductCardSkeleton key={`skeleton-${index}`} />
       ))}
-    </>
+    </div>
   );
 }
 
-
-// --- Updated Main Page Component ---
+// Main Page Component
 const ProductsPage = ({
   searchParams,
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) => {
-  // Extract params for passing down (ensure they are strings)
+  // Extract params for passing down
   const category = typeof searchParams?.category === 'string' ? searchParams.category : undefined;
   const sort = typeof searchParams?.sort === 'string' ? searchParams.sort : undefined;
   const minPrice = typeof searchParams?.minPrice === 'string' ? searchParams.minPrice : undefined;
   const maxPrice = typeof searchParams?.maxPrice === 'string' ? searchParams.maxPrice : undefined;
 
-  // Determine title based on category filter with formatting improvements
+  // Determine title based on category filter
   const categoryName = category ? category.replace(/\+/g, ' ') : '';
   const pageTitle = category ? `${categoryName} Furniture` : "Our Furniture";
 
   return (
-    <div className="mt-24"> {/* Added margin top to prevent navbar overlap */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-4">{pageTitle}</h1>
-        <div className="h-1 w-20 bg-primary"></div>
+    <div className="container mx-auto px-4">
+      {/* Page Header - Smaller margins */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold font-playfair mb-2">{pageTitle}</h1>
+        <div className="h-0.5 w-16 bg-primary mb-4"></div>
       </div>
 
-      {/* Render Filter Component */}
+      {/* Filters - Using your existing ProductFilters component */}
       <ProductFilters />
 
       {/* Product Grid with Suspense */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 mt-8">
-         <Suspense key={JSON.stringify(searchParams)} fallback={<ProductGridSkeleton />}> {/* Add key to force refetch on param change */}
-            {/* Pass extracted params to ProductList */}
+      <div className="min-h-[300px]">
+         <Suspense key={JSON.stringify(searchParams)} fallback={<ProductGridSkeleton />}>
             {/* @ts-expect-error Async Server Component */}
-            <ProductList category={category} sort={sort} minPrice={minPrice} maxPrice={maxPrice} />
+            <ProductList 
+              category={category} 
+              sort={sort} 
+              minPrice={minPrice} 
+              maxPrice={maxPrice} 
+            />
          </Suspense>
       </div>
     </div>

@@ -12,7 +12,7 @@ interface ProductQuickActionsProps {
 
 const ProductQuickActions = ({ productId }: ProductQuickActionsProps) => {
   const router = useRouter();
-  const { addToCart } = useCart(); // Using your existing useCart hook
+  const { addToCart } = useCart();
 
   const viewProductDetails = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -20,13 +20,12 @@ const ProductQuickActions = ({ productId }: ProductQuickActionsProps) => {
     router.push(`/products/${productId}`);
   };
 
-  // Simplified version - directly uses your addToCart function
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     try {
-      // Send just the ID to be handled by your enhanced CartContext
+      // Just pass the ID - the enhanced CartContext will handle the rest
       addToCart({ _id: productId });
     } catch (error) {
       console.error("Error adding to cart:", error);
@@ -39,20 +38,20 @@ const ProductQuickActions = ({ productId }: ProductQuickActionsProps) => {
       <Button 
         size="icon" 
         variant="secondary" 
-        className="rounded-full h-10 w-10 bg-background/80 hover:bg-background border-none"
+        className="rounded-full h-8 w-8 bg-background/80 hover:bg-background border-none shadow-md"
         aria-label="View product details"
         onClick={viewProductDetails}
       >
-        <Eye size={18} />
+        <Eye size={14} />
       </Button>
       <Button 
         size="icon" 
         variant="secondary" 
-        className="rounded-full h-10 w-10 bg-primary/80 hover:bg-primary text-primary-foreground border-none"
+        className="rounded-full h-8 w-8 bg-primary/90 hover:bg-primary text-primary-foreground border-none shadow-md"
         aria-label="Add to cart"
         onClick={handleAddToCart}
       >
-        <ShoppingBag size={18} />
+        <ShoppingBag size={14} />
       </Button>
     </div>
   );

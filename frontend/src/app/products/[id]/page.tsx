@@ -3,16 +3,18 @@ import { Product } from "@/types";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import React from "react";
-import AddToCartButton from "@/components/AddToCartButton"; // 1. Import the component
+import Link from "next/link";
+import AddToCartButton from "@/components/AddToCartButton";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Star } from "lucide-react";
 
-// Define props type, including params for dynamic route
 interface ProductPageProps {
   params: {
     id: string;
   };
 }
 
-// Function to fetch a single product by ID (remains the same)
 async function getProduct(id: string): Promise<Product | null> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
@@ -40,7 +42,26 @@ async function getProduct(id: string): Promise<Product | null> {
   }
 }
 
-// The Page component (Async component)
+// Function to fetch related products
+async function getRelatedProducts(category: string, currentId: string): Promise<Product[]> {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return [];
+  
+  try {
+    const res = await fetch(`${apiUrl}/products?category=${category}&limit=4`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Failed to fetch related products: ${res.status}`);
+    
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || "API error");
+    
+    // Filter out the current product
+    return (data.data as Product[]).filter(product => product._id !== currentId);
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    return [];
+  }
+}
+
 const ProductDetailPage: React.FC<ProductPageProps> = async ({ params }) => {
   const productId = params.id;
   const product = await getProduct(productId);
@@ -48,48 +69,95 @@ const ProductDetailPage: React.FC<ProductPageProps> = async ({ params }) => {
   if (!product) {
     notFound();
   }
+  
+  // Get related products
+  const relatedProducts = await getRelatedProducts(product.category, productId);
 
-  // 2. Remove the placeholder handleAddToCart function
-  // const handleAddToCart = () => { ... }; // REMOVED
+  // Format price with comma
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(product.price);
+
+  // Rating stars component
+  const renderRatingStars = (rating: number) => {
+    return (
+      <div className="flex items-center">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            size={16}
+            className={`${
+              i < Math.floor(rating)
+                ? "text-primary fill-primary"
+                : i < rating
+                ? "text-primary fill-primary opacity-50"
+                : "text-muted-foreground"
+            }`}
+          />
+        ))}
+        <span className="text-sm text-muted-foreground ml-2">
+          ({product.numReviews} reviews)
+        </span>
+      </div>
+    );
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-        {/* Image Section (remains the same) */}
-        <div className="lg:w-1/2">
-          <div className="relative w-full aspect-square bg-gray-200 rounded-lg overflow-hidden shadow-lg">
+    <div className="container mx-auto px-4">
+      {/* Breadcrumb */}
+      <div className="text-sm text-muted-foreground flex items-center mb-6 flex-wrap">
+        <Link href="/" className="hover:text-primary">Home</Link>
+        <span className="mx-2">/</span>
+        <Link href="/products" className="hover:text-primary">Products</Link>
+        <span className="mx-2">/</span>
+        <Link href={`/products?category=${encodeURIComponent(product.category)}`} className="hover:text-primary">
+          {product.category}
+        </Link>
+        <span className="mx-2">/</span>
+        <span className="text-foreground truncate max-w-[150px] sm:max-w-xs">{product.name}</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left: Image Gallery - REDUCED SIZE */}
+        <div className="space-y-3">
+          {/* Main Image - Reduced from full width to max-w-md */}
+          <div className="relative mx-auto max-w-md aspect-square rounded-md overflow-hidden border border-border/40">
             <Image
               src={product.imageUrl || "https://placehold.co/600x600"}
               alt={product.name}
               fill
-              style={{ objectFit: "cover" }}
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority
+              className="object-cover hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
+
+          {/* Thumbnail Gallery */}
           {product.images && product.images.length > 0 && (
-            <div className="flex space-x-2 mt-4 overflow-x-auto">
-              <div className="relative w-20 h-20 border-2 border-indigo-500 rounded">
+            <div className="flex gap-2 overflow-x-auto pb-2 px-1 max-w-md mx-auto">
+              <div className="relative w-16 h-16 shrink-0 rounded-md overflow-hidden border-2 border-primary">
                 <Image
                   src={product.imageUrl}
                   alt={`${product.name} main`}
                   fill
-                  style={{ objectFit: "cover" }}
-                  className="rounded"
-                  sizes="80px"
+                  className="object-cover"
+                  sizes="64px"
                 />
               </div>
               {product.images.map((imgUrl, index) => (
                 <div
                   key={index}
-                  className="relative w-20 h-20 border border-gray-300 rounded hover:border-indigo-400 cursor-pointer"
+                  className="relative w-16 h-16 shrink-0 rounded-md overflow-hidden border border-border/40 hover:border-primary transition-colors"
                 >
                   <Image
                     src={imgUrl}
                     alt={`${product.name} view ${index + 1}`}
                     fill
-                    style={{ objectFit: "cover" }}
-                    className="rounded"
-                    sizes="80px"
+                    className="object-cover"
+                    sizes="64px"
                   />
                 </div>
               ))}
@@ -97,42 +165,77 @@ const ProductDetailPage: React.FC<ProductPageProps> = async ({ params }) => {
           )}
         </div>
 
-        {/* Details Section (remains the same up to the button) */}
-        <div className="lg:w-1/2">
-          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
+        {/* Right: Product Details */}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold font-playfair text-foreground mb-2">
             {product.name}
           </h1>
-          <p className="text-2xl font-semibold text-indigo-600 mb-4">
-            ${product.price.toFixed(2)}
-          </p>
-          <div className="mb-4">
-            <span className="text-sm font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+
+          {/* Category Badge */}
+          <div className="mb-2">
+            <Badge variant="secondary" className="text-xs">
               {product.category}
-            </span>
+            </Badge>
           </div>
-          <p className="text-gray-700 mb-6 leading-relaxed">
-            {product.description}
-          </p>
-          <div className="mb-6 border-t pt-4">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800">
-              Details
-            </h3>
-            <ul className="list-disc list-inside text-gray-600 space-y-1">
-              {product.material && <li>Material: {product.material}</li>}
-              {product.dimensions && (
-                <li>
-                  Dimensions:{" "}
-                  {`${product.dimensions.width || "N/A"}cm W x ${product.dimensions.height || "N/A"}cm H x ${product.dimensions.depth || "N/A"}cm D`}
+
+          {/* Rating */}
+          {product.rating > 0 && (
+            <div className="mb-4">
+              {renderRatingStars(product.rating)}
+            </div>
+          )}
+
+          {/* Price */}
+          <div className="mb-6">
+            <p className="text-2xl font-bold text-primary">
+              {formattedPrice}
+            </p>
+          </div>
+
+          <Separator className="my-4" />
+
+          {/* Description */}
+          <div className="mb-6">
+            <h2 className="text-lg font-medium mb-2">Description</h2>
+            <p className="text-muted-foreground text-sm">
+              {product.description}
+            </p>
+          </div>
+
+          {/* Key Details */}
+          <div className="mb-6">
+            <h2 className="text-lg font-medium mb-2">Details</h2>
+            <ul className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {product.material && (
+                <li className="flex">
+                  <span className="w-24 text-muted-foreground">Material:</span>
+                  <span>{product.material}</span>
                 </li>
               )}
-              <li>
-                Stock:{" "}
+              {product.dimensions && (
+                <>
+                  <li className="flex">
+                    <span className="w-24 text-muted-foreground">Width:</span>
+                    <span>{product.dimensions.width} cm</span>
+                  </li>
+                  <li className="flex">
+                    <span className="w-24 text-muted-foreground">Height:</span>
+                    <span>{product.dimensions.height} cm</span>
+                  </li>
+                  <li className="flex">
+                    <span className="w-24 text-muted-foreground">Depth:</span>
+                    <span>{product.dimensions.depth} cm</span>
+                  </li>
+                </>
+              )}
+              <li className="flex col-span-2">
+                <span className="w-24 text-muted-foreground">Availability:</span>
                 {product.stock > 0 ? (
-                  <span className="text-green-600 font-medium">
+                  <span className="text-green-600">
                     In Stock ({product.stock} available)
                   </span>
                 ) : (
-                  <span className="text-red-600 font-medium">
+                  <span className="text-red-600">
                     Out of Stock
                   </span>
                 )}
@@ -140,12 +243,46 @@ const ProductDetailPage: React.FC<ProductPageProps> = async ({ params }) => {
             </ul>
           </div>
 
-          {/* 3. Replace the old button logic with the AddToCartButton component */}
-          <div className="mt-6">
+          <Separator className="my-4" />
+
+          {/* Add to Cart */}
+          <div className="mt-4">
             <AddToCartButton product={product} />
+            <p className="text-xs text-muted-foreground mt-2">
+              Free shipping on orders over $499
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Related Products - REDUCED SIZE */}
+      {relatedProducts.length > 0 && (
+        <div className="mt-12 mb-8">
+          <h2 className="text-xl font-bold font-playfair mb-6">You May Also Like</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {relatedProducts.map(product => (
+              <Link 
+                key={product._id} 
+                href={`/products/${product._id}`} 
+                className="group block"
+              >
+                {/* Reduced image size with fixed height */}
+                <div className="relative aspect-[4/5] bg-background/40 rounded-md overflow-hidden border border-border/40">
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    sizes="(max-width: 640px) 50vw, 25vw"
+                  />
+                </div>
+                <h3 className="mt-2 text-sm font-medium truncate">{product.name}</h3>
+                <p className="text-sm text-primary font-medium">${product.price.toFixed(2)}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
