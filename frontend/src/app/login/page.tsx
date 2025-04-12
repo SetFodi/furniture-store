@@ -1,20 +1,19 @@
-// src/app/login/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button"; // Import Button
-import { Input } from "@/components/ui/input";   // Import Input
-import { Label } from "@/components/ui/label";   // Import Label
-import { toast } from "react-hot-toast";         // Import toast
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "react-hot-toast";
+import { Lock, Mail } from "lucide-react";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // No need for separate error state, use toast directly
-  // const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,7 +30,6 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Clear previous toasts if any
     toast.dismiss();
 
     try {
@@ -44,7 +42,6 @@ const LoginPage: React.FC = () => {
       setIsLoading(false);
 
       if (result?.error) {
-        // Show error toast
         toast.error(result.error || "Invalid credentials. Please try again.");
         console.error("Login Error:", result.error);
       } else if (result?.ok) {
@@ -62,71 +59,139 @@ const LoginPage: React.FC = () => {
   };
 
   if (status === "loading") {
-    // Add a more visually appealing loader later if desired
-    return <div className="text-center p-10">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-12 w-12 rounded-full bg-primary/20 mb-4"></div>
+          <div className="h-4 w-24 bg-muted rounded"></div>
+        </div>
+      </div>
+    );
   }
+  
   if (status === "authenticated") { return null; }
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-200px)] py-12 px-4 sm:px-6 lg:px-8">
-      {/* Use Card component later for better structure */}
-      <div className="max-w-md w-full space-y-8 bg-card p-8 shadow-lg rounded-lg border"> {/* Added border */}
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-foreground"> {/* Use foreground color */}
-            Sign in to your account
-          </h2>
+    <div className="flex flex-col md:flex-row items-stretch min-h-[calc(100vh-200px)]">
+      {/* Left side - Decorative panel with image */}
+      <div className="hidden md:flex md:w-1/2 bg-primary/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-background/0"></div>
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-center">
+          <div className="w-24 h-24 mb-8 relative">
+            <div className="absolute inset-0 bg-primary/20 rounded-full animate-pulse"></div>
+            <Image 
+              src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=687&q=80" 
+              alt="Elegant furniture" 
+              fill 
+              className="object-cover rounded-full"
+            />
+          </div>
+          <h2 className="text-3xl font-playfair font-bold mb-6 text-foreground">Welcome Back</h2>
+          <p className="text-muted-foreground max-w-md mb-8">
+            Sign in to access your account and explore our premium collection of luxury furniture for your home.
+          </p>
+          <div className="w-20 h-1 bg-primary"></div>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* Email Input */}
-          <div className="space-y-2">
-            <Label htmlFor="email-address">Email address</Label> {/* Use Label */}
-            <Input // Use Input component
-              id="email-address"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              disabled={isLoading}
-            />
-          </div>
-          {/* Password Input */}
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label> {/* Use Label */}
-            <Input // Use Input component
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              disabled={isLoading}
-            />
-          </div>
+      </div>
 
-          {/* Submit Button */}
-          <div>
-            <Button // Use Button component
-              type="submit"
-              disabled={isLoading}
-              className="w-full" // Make button full width
-            >
-              {isLoading ? "Signing In..." : "Sign in"}
-            </Button>
+      {/* Right side - Login form */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+        <div className="max-w-md w-full">
+          {/* Logo/branding for mobile */}
+          <div className="md:hidden text-center mb-8">
+            <h1 className="text-2xl font-bold mb-2">
+              <span className="font-playfair">Fancy</span>
+              <span className="text-primary font-playfair">Furnish</span>
+            </h1>
+            <div className="w-16 h-1 bg-primary mx-auto"></div>
           </div>
-        </form>
-        <div className="text-sm text-center">
-          <span className="text-muted-foreground">Don't have an account? </span> {/* Use muted color */}
-          <Link
-            href="/register"
-            className="font-medium text-primary hover:text-primary/90" // Use primary color
-          >
-            Register here
-          </Link>
+          
+          <div className="bg-card border border-border/50 rounded-lg shadow-lg p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-playfair font-bold text-foreground">
+                Sign in
+              </h2>
+              <p className="text-muted-foreground text-sm mt-2">
+                Enter your credentials to access your account
+              </p>
+            </div>
+
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Email Input */}
+              <div className="space-y-2">
+                <Label 
+                  htmlFor="email-address" 
+                  className="text-sm font-medium flex items-center gap-2"
+                >
+                  <Mail size={16} className="text-muted-foreground" />
+                  Email address
+                </Label>
+                <Input
+                  id="email-address"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  disabled={isLoading}
+                  className="h-11"
+                />
+              </div>
+
+              {/* Password Input */}
+              <div className="space-y-2">
+                <Label 
+                  htmlFor="password" 
+                  className="text-sm font-medium flex items-center gap-2"
+                >
+                  <Lock size={16} className="text-muted-foreground" />
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={isLoading}
+                  className="h-11"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 mt-8"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                    <span>Signing In...</span>
+                  </span>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Don't have an account?{' '}
+                <Link
+                  href="/register"
+                  className="font-medium text-primary hover:text-primary/90 transition-colors"
+                >
+                  Create an account
+                </Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
