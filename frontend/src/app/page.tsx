@@ -387,7 +387,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Newsletter Section - New */}
       <section className="py-24 px-4 bg-card">
         <div className="container mx-auto max-w-4xl text-center">
